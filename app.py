@@ -6,7 +6,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 
-from detection import get_llm_score
+from detection import get_llm_score, get_stylometric_score, compute_confidence
 from audit import init_db, log_entry, get_log
 
 load_dotenv()
@@ -36,42 +36,41 @@ def submit():
     content_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    # --- Signal 1: Groq LLM classification ---
-    signal1_result = get_llm_score(text)
-    llm_score = signal1_result["llm_score"]
+    # Signal 1: Groq LLM
+    signal1 = get_llm_score(text)
+    llm_score = signal1["llm_score"]
 
-    # Placeholder confidence/label until Milestone 4 adds signal 2 + real scoring
-    confidence = llm_score
-    if confidence >= 0.6:
-        attribution = "likely_ai"
-        label = "Placeholder: leaning AI-generated (signal 2 not yet implemented)"
-    elif confidence <= 0.4:
-        attribution = "likely_human"
-        label = "Placeholder: leaning human-written (signal 2 not yet implemented)"
-    else:
-        attribution = "uncertain"
-        label = "Placeholder: uncertain (signal 2 not yet implemented)"
+    # Signal 2: Stylometrics
+    signal2 = get_stylometric_score(text)
+    stylometric_score = signal2["stylometric_score"]
+
+    # Combine into confidence score
+    result = compute_confidence(llm_score, stylometric_score)
+    confidence = result["combined_score"]
+    verdict = result["verdict"]
+    label = result["label"]
 
     log_entry({
         "content_id": content_id,
         "creator_id": creator_id,
         "timestamp": timestamp,
         "text_snippet": text[:200],
-        "attribution": attribution,
+        "attribution": verdict,
         "confidence": confidence,
         "llm_score": llm_score,
-        "stylometric_score": None,
+        "stylometric_score": stylometric_score,
         "status": "classified",
         "appeal_reason": None,
     })
 
     return jsonify({
         "content_id": content_id,
-        "attribution": attribution,
+        "attribution": verdict,
         "confidence": confidence,
         "label": label,
         "signals": {
-            "llm_score": llm_score
+            "llm_score": llm_score,
+            "stylometric_score": stylometric_score,
         }
     })
 
