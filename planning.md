@@ -66,6 +66,8 @@ These two signals are genuinely independent: one is semantic (LLM judgment), the
 
 Each detection signal produces its own score. The final confidence score is a weighted combination of the LLM score (60%) and the stylometric score (40%). The LLM receives a slightly higher weight because it captures broader semantic and stylistic patterns, while the stylometric features provide an independent structural check.
 
+combined_score = (0.6 × llm_score) + (0.4 × stylometric_score)
+
 Example ranges:
 
 | Confidence | Result |
@@ -180,6 +182,7 @@ Returns all audit log entries including:
 
 Submission Flow
 
+```
       POST /submit (raw text)
             |
             v
@@ -206,9 +209,11 @@ Submission Flow
             |
             v
     Return API Response: {verdict, confidence, label_text}
+```
 
 Appeal Flow
 
+```
       POST /appeal/<id> (reasoning text)
             |
             v
@@ -222,6 +227,7 @@ Update Status: Under Review
             |
             v
     Return Confirmation: {status: "Under Review"}
+```
 
 ---
 
@@ -277,6 +283,7 @@ The creator submits:
   "creator_id": "creator_123",
   "reason": "I wrote this myself."
 }
+```
 
 ## What Happens When an Appeal Is Submitted?
 
@@ -305,18 +312,6 @@ When a human reviewer opens an appeal, they will see:
 - Current submission status
 
 This information allows the reviewer to understand how the original classification was made and why the creator disagreed with the result.
-
----
-
-# Anticipated Edge Cases
-
-## Very Short Submissions
-
-Submissions under roughly 30 words don't give the stylometric signal enough data to compute meaningful sentence-length variance or vocabulary diversity. A two-sentence submission can produce an extreme stylometric score simply because there isn't enough text to measure, not because the writing is actually uniform or varied. This could push a legitimate short piece toward an inaccurate "AI-like" or "human-like" score.
-
-## Heavily Repetitive or Simple-Vocabulary Creative Writing
-
-Genres like children's poetry or song lyrics with refrains intentionally repeat words and phrases. This lowers vocabulary diversity and reduces sentence-length variance, both of which the stylometric signal interprets as "AI-like," even though the repetition is a deliberate human artistic choice rather than evidence of AI generation.
 
 ---
 
