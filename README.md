@@ -1,6 +1,6 @@
 # Provenance Guard
 
-A backend API that classifies submitted text as AI-generated or human-written, returns a confidence score and transparency label, logs every decision, and allows creators to appeal misclassifications.
+A backend API that determines whether the text submitted is created by AI or a person, returns a confidence score and transparency label, and records every single decision made in their logs so that owners have the ability to appeal any decisions that they feel may be incorrectly classified.
 
 ---
 
@@ -17,7 +17,7 @@ A submitted piece of text takes the following path through the system:
 7. The full result is written to the **SQLite audit log**
 8. The API returns `content_id`, `attribution`, `confidence`, `label`, and both signal scores
 
-If a creator disagrees with their classification, `POST /appeal` logs their reasoning, updates the submission status to `under_review`, and returns a confirmation. No automatic re-classification occurs.
+When an owner believes that their submission is incorrectly classified, `POST /appeal` records their reasoning for why they believe it was misclassified, marks the submission as `under_review`, and returns a confirmation of the submission being `under_review`. There will not be an automatic re-classification based on the submission being appealed.
 
 ---
 
@@ -25,11 +25,11 @@ If a creator disagrees with their classification, `POST /appeal` logs their reas
 
 ### Signal 1: Groq LLM Classification
 
-**What it measures:** Whether the overall writing style and semantic content read as AI-generated or human-written, based on a holistic judgment by `llama-3.3-70b-versatile`.
+**What it measures:** The overall consistency of writing style and the semantic content being either AI or Human is based on the overall judgment by `llama-3.3-70b-versatile`.
 
-**Why I chose it:** LLMs recognize patterns in tone, phrasing, and semantic consistency that statistical tools cannot capture. A single sentence asking the model to return a probability is cheap, fast, and captures things like unnaturally even hedging language or suspiciously generic phrasing.
+**Why I chose it:** LLMs recognize patterns in tone, phrasing, and overall semantic consistency that cannot be captured by statistical tools. For example, it would be very inexpensive and fast to send one sentence to the model and request a probability, this would also allow for identification of inconsistently positioned hedging language or outrageous generic phrasing.
 
-**What it misses:** It is a black box — there is no explanation for why it assigned a particular score. It can be fooled by heavily edited AI text and may flag polished human writing as AI-generated. Short texts give it little signal to work with.
+**What it misses:** It is a "black box", so there is no explanation as to why it gives a particular score. Because of this, heavily modified text inputted from an AI could easily confuse the model. Likewise, a human with polished writing may inadvertently receive a classification of an AI generation. Additionally, when inputting short texts, the model does not have enough signal to work with.
 
 **Output:** Float between 0 and 1. Returned from `get_llm_score(text)` in `detection.py`.
 
@@ -42,7 +42,7 @@ If a creator disagrees with their classification, `POST /appeal` logs their reas
 - **Type-token ratio (TTR):** Ratio of unique words to total words. AI text reuses vocabulary more, producing a lower TTR.
 - **Punctuation density:** Ratio of punctuation characters (commas, dashes, colons, parentheses) to total words. Human writing tends to use more varied punctuation.
 
-**Why I chose it:** These metrics are genuinely independent of the LLM signal — one is semantic, the other is structural. Combining them is more informative than either alone. Stylometric features are also fully explainable, unlike the LLM score.
+**Why I chose it:** These two metrics are fundamentally distinct from the LLM score. One of them is semantic in nature, while the other focuses on how words and phrases are put together. The combination of these two metrics' results can provide more valuable information about how a text is different from an LLM-generated text than either metric would provide by itself. With respect to the structure of the text, stylometric features can add to the understanding of what differentiates human-written from LLM-generated text.
 
 **What it misses:** Constrained human writing styles (minimalist poets, non-native speakers, genre fiction with repetitive structure) can score as AI-like even though they are human. Very short texts (under ~30 words) produce unreliable scores because there is not enough data to compute meaningful variance.
 
@@ -58,7 +58,7 @@ Both signals are combined using a weighted average:
 combined_score = (0.6 × llm_score) + (0.4 × stylometric_score)
 ```
 
-The LLM signal is weighted higher (60%) because it captures semantic and stylistic meaning that pure statistics cannot. The stylometric signal (40%) provides an independent structural check.
+The LLM signal is weighted the most heavily (60%) because it reflects both semantic and stylistic aspects of a piece of text, while the stylometric signal only captures structural differences (40%).
 
 **Threshold mapping:**
 
@@ -82,7 +82,7 @@ I tested five deliberately chosen inputs spanning the full range. Scores varied 
 | Borderline edited AI (remote work) | 0.40 | 0.329 | **0.372** | likely_human |
 | Clearly human (casual ramen review) | 0.23 | 0.387 | **0.293** | likely_human |
 
-The high-confidence AI input scored 0.906 and the clearly human input scored 0.293 — a gap of 0.613. The borderline cases landed between them as expected.
+The high-confidence AI input scored 0.906 and the clearly human input scored 0.293, a gap of 0.613. The borderline cases landed between them as expected.
 
 ---
 
