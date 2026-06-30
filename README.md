@@ -72,16 +72,17 @@ The LLM signal is weighted higher (60%) because it captures semantic and stylist
 
 **How I validated it produces meaningful variation:**
 
-I tested four deliberately chosen inputs spanning the range. Scores varied from 0.293 to 0.638 — not clustering near a constant value:
+I tested five deliberately chosen inputs spanning the full range. Scores varied from 0.293 to 0.906:
 
 | Input | LLM Score | Stylometric Score | Combined | Verdict |
 |---|---|---|---|---|
+| High-confidence AI (repetitive uniform text) | 0.95 | 0.839 | **0.906** | likely_ai (high confidence) |
 | Clearly AI (formal AI paragraph) | 0.80 | 0.394 | **0.638** | likely_ai |
 | Borderline formal human (monetary policy) | 0.72 | 0.438 | **0.607** | likely_ai |
 | Borderline edited AI (remote work) | 0.40 | 0.329 | **0.372** | likely_human |
 | Clearly human (casual ramen review) | 0.23 | 0.387 | **0.293** | likely_human |
 
-The clearly AI input scored 0.638 and the clearly human input scored 0.293 — a meaningful gap. The two borderline cases landed between them as expected.
+The high-confidence AI input scored 0.906 and the clearly human input scored 0.293 — a gap of 0.613. The borderline cases landed between them as expected.
 
 ---
 
@@ -104,7 +105,7 @@ The exact text displayed to users for each confidence band:
 **High Confidence Human** (combined score < 0.16):
 > "This content shows strong indicators of human authorship. Our system found little evidence of AI generation."
 
-The three required variants (high-confidence AI, high-confidence human, uncertain) all produce distinct label texts. A score of 0.638 and a score of 0.95 produce visibly different labels — the system does not make a binary flip at 0.5.
+The three required variants (high-confidence AI, high-confidence human, uncertain) all produce distinct label texts. A score of 0.906 and a score of 0.293 produce completely different labels — the system does not make a binary flip at 0.5.
 
 ---
 
